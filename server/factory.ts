@@ -6,7 +6,7 @@ import md5 from 'md5';
 
 const inputEncoding = 'utf8';
 const storageEncoding = 'hex';
-const initVector = Buffer.alloc(16, 0);
+//const initVector = 'asdfasdf!@#$1234';
 const salt = 'salt';
 const algorithm = 'aes-256-cbc';
 const saltRounds = 12;
@@ -18,7 +18,9 @@ class Cryptogropher {
   //inputEncoding = 'utf8';
   //storageEncoding = 'hex';
 
-  async encrypter(payload: string, password: string): Promise<string> {
+  async encrypter(payload: string, password: string, initVector: string): Promise<string> {
+    initVector = this.convert16to32(initVector);
+
     const output = new Promise<string>((resolve) => {
       crypto.scrypt(password, salt, keyLength, (error: Error | null, key: Buffer) => {
         const cipher = crypto.createCipheriv(algorithm, key, initVector);
@@ -31,7 +33,9 @@ class Cryptogropher {
     return await output;
   }
 
-  async decrypter(payload: string, password: string): Promise<string> {
+  async decrypter(payload: string, password: string, initVector: string): Promise<string> {
+    initVector = this.convert16to32(initVector);
+
     const output = new Promise<string>((resolve) => {
       crypto.scrypt(password, salt, keyLength, (error: Error | null, key: Buffer) => {
         const cipher = crypto.createDecipheriv(algorithm, key, initVector);
@@ -70,10 +74,15 @@ class Cryptogropher {
       });
     });
   }
+
+  convert16to32(input: string): string {
+    return input + input + input + input;
+  }
 }
 
 export class DeadDrop extends Cryptogropher implements IDeadDrop {
   id: Promise<string> | string;
+  din: string;
   title: string;
   payload: string;
   isEncrypted: boolean;
@@ -84,8 +93,8 @@ export class DeadDrop extends Cryptogropher implements IDeadDrop {
 
   constructor(requestTicket: RequestTicket, repository: IRepository) {
     super();
-
     this.id = repository.id_dd;
+    this.din = requestTicket.din;
     this.title = requestTicket.title;
     this.payload = repository.payload;
     this.isEncrypted = true;
@@ -98,6 +107,7 @@ export class DeadDrop extends Cryptogropher implements IDeadDrop {
   // Completely empties the dead drop object.
   strip(): void {
     this.id = '';
+    this.din = '';
     this.title = '';
     this.payload = '';
     this.repositoryHash = '';
@@ -119,7 +129,7 @@ export class DeadDrop extends Cryptogropher implements IDeadDrop {
       const deadDropEncryptionState: boolean[] = [this.isEncrypted, isPasswordMatching];
 
       if (!deadDropEncryptionState.includes(false)) {
-        this.payload = await this.decrypter(this.payload, password);
+        this.payload = await this.decrypter(this.payload, password, this.din);
         this.isEncrypted = false;
       } else {
         console.log(`DeadDrop: Unable to decrypt ${this.id}. Is the password correct?`);
@@ -133,29 +143,34 @@ export class DeadDrop extends Cryptogropher implements IDeadDrop {
 export class RequestTicket extends Cryptogropher implements IUserRequest {
   action!: Actions;
   title!: string;
+  din: string;
   password!: string;
   payload!: string;
   id: Promise<string> | string;
 
-  constructor(action: Actions, title: string, password: string, payload: string) {
+  constructor(action: Actions, title: string, password: string, payload: string, din: string = '') {
     super();
     this.action = action;
+    this.din = din === '' ? this.din16bit() : din;
     this.title = title;
     this.password = password;
     this.payload = payload;
-    this.id = this.idGenerator(title);
+    this.id = this.idGenerator(title, this.din);
   }
-  private idGenerator(title: string): string {
-    return md5(title);
+  private idGenerator(title: string, din: string): string {
+    return md5(title + din);
+  }
+
+  private din16bit(): string {
+    return Math.random().toString(36).substring(2, 6);
   }
 
   async encryptTicket(payload: string, password: string): Promise<boolean> {
     try {
       return new Promise<boolean>((resolve) => {
         try {
-          this.encrypter(payload, password).then((encryptedPayload) => {
+          this.encrypter(payload, password, this.din).then((encryptedPayload) => {
             this.payload = encryptedPayload;
-
             this.hasher(password).then((hashedPassword) => {
               this.password = hashedPassword;
               resolve(true);

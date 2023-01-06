@@ -29,6 +29,7 @@ export enum Actions {
 
 export interface IUserRequest {
   id?: Promise<string> | string;
+  din?: string;
   title: string;
   password: string;
   payload: string;
@@ -37,6 +38,7 @@ export interface IUserRequest {
 
 export interface IDeadDrop {
   id: Promise<string> | string;
+  din: string;
   title: string;
   payload: string;
   isEncrypted: boolean;
