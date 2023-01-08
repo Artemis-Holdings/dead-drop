@@ -27,6 +27,7 @@ export class Controller {
 
   static async deaddrop(requestTicket: RequestTicket): Promise<DeadDrop> {
     const repoBlank: IRepository = {
+      
       id_dd: '',
       pass_hash: '',
       payload: '',
@@ -81,6 +82,7 @@ export class Controller {
                       newTitle,
                       password,
                       currentDeadDrop.payload,
+                      requestTicket.din,
                     );
                     return await createDeadDrop(updateTitleRequest, password);
                   });

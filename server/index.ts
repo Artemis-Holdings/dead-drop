@@ -61,6 +61,7 @@ export class Routes {
   public async deaddrop(req: Request, res: Response) {
     try {
       const ticket: IUserRequest = {
+        din: req.headers.din as string,
         action: req.headers.action as unknown as Actions,
         title: req.headers.title as string,
         payload: req.headers.payload as string,
@@ -78,7 +79,7 @@ export class Routes {
         });
       } else {
         // TODO: move the RequestTicket object instanciation to the controller and out of index.
-        const request = new RequestTicket(ticket.action, ticket.title, ticket.password, ticket.payload);
+        const request = new RequestTicket(ticket.action, ticket.title, ticket.password, ticket.payload, ticket.din);
         const deadDrop = await Controller.deaddrop(request);
         if (deadDrop.isEncrypted) {
           deadDrop.strip();
